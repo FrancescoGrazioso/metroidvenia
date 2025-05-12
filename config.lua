@@ -12,12 +12,12 @@ local config = {
     
     -- Animazioni
     FRAME_DURATION = 0.2,
-    ATTACK_SPEED_MULTIPLIER = 0.3,
+    ATTACK_SPEED_MULTIPLIER = 0.23,
     ENTITY_SCALE = 1.6,
     
     -- Dash
     DASH_DURATION = 0.18,
-    DASH_SPEED = 600,
+    DASH_SPEED = 800,
     DASH_COOLDOWN = 0.4,
     
     -- Debug

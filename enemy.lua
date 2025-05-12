@@ -1,207 +1,132 @@
--- main.lua
--- Entry point principale del gioco
+-- enemy.lua
+-- Implementazione di un nemico che eredita da Entity
 
+local Entity = require("entity")
 local config = require("config")
-local input = require("input")
-local world = require("world")
-local Player = require("player")
+local utils = require("utils")
 
--- Gestori di stato gioco
-local game_state = {
-    current = "menu",
-    states = {
-        menu = {},
-        playing = {},
-        paused = {},
-        game_over = {}
-    }
-}
+-- Crea una classe Enemy che eredita da Entity
+local Enemy = setmetatable({}, {__index = Entity})
+Enemy.__index = Enemy
 
--- Inizializzazione
-function love.load()
-    -- Imposta dimensioni finestra
-    love.window.setMode(
-        config.SCREEN_WIDTH, 
-        config.SCREEN_HEIGHT, 
-        { 
-            resizable = true,
-            vsync = true,
-            minwidth = 400,
-            minheight = 300
+function Enemy:new(x, y)
+    local instance = Entity.new(self, x, y, 32, 64)
+    instance.is_enemy = true
+
+    -- Stati
+    instance.state = "idle"
+    instance.previous_state = nil
+
+    -- Movimento base (velocità aumentata del 25%)
+    instance.speed = config.PLAYER_SPEED
+    instance.direction = 1 -- 1 = destra, -1 = sinistra
+
+    -- Carica le stesse animazioni del player
+    instance:load_enemy_animations()
+
+    return instance
+end
+
+function Enemy:load_enemy_animations()
+    local animations_data = {
+        idle = {
+            frames = utils.load_frames("assets/Slimes/SlimeGreen/SlimeBasic_0000%d.png", 9),
+            duration = config.FRAME_DURATION,
+            loop = true
+        },
+        jump = {
+            frames = utils.load_frames("assets/Slimes/SlimeGreen/SlimeBasic_0000%d.png", 9),
+            duration = config.FRAME_DURATION,
+            loop = true
+        },
+        fall = {
+            frames = utils.load_frames("assets/Slimes/SlimeGreen/SlimeBasic_0000%d.png", 9),
+            duration = config.FRAME_DURATION,
+            loop = true
+        },
+        run = {
+            frames = utils.load_frames("assets/Slimes/SlimeGreen/SlimeBasic_0000%d.png", 9),
+            duration = config.FRAME_DURATION,
+            loop = true
+        },
+        attack = {
+            frames = utils.load_frames("assets/Slimes/SlimeGreen/SlimeBasic_0000%d.png", 9),
+            duration = config.FRAME_DURATION * config.ATTACK_SPEED_MULTIPLIER,
+            loop = false
+        },
+        dash = {
+            frames = utils.load_frames("assets/Slimes/SlimeGreen/SlimeBasic_0000%d.png", 9),
+            duration = config.FRAME_DURATION,
+            loop = false
         }
+    }
+    self:load_animations(animations_data)
+    self.current_animation = "idle"
+end
+
+function Enemy:update(dt)
+    -- Movimento base: cammina avanti e indietro
+    local move_direction = self.direction
+
+    -- Controllo bordo piattaforma: se non c'è piattaforma sotto il piede avanti, inverte direzione
+    if not self.on_ground then
+        move_direction = 0
+    end
+    if self.world and self.world.platforms and self.on_ground then
+        local foot_x
+        if self.direction > 0 then
+            foot_x = self.x + self.width + self.speed * dt
+        else
+            foot_x = self.x - self.speed * dt
+        end
+        local foot_y = self.y + self.height + 1 -- appena sotto i piedi
+        local on_platform = false
+        for _, platform in ipairs(self.world.platforms) do
+            if foot_x >= platform.x and foot_x <= platform.x + platform.w and
+               foot_y >= platform.y and foot_y <= platform.y + platform.h then
+                on_platform = true
+                break
+            end
+        end
+        if not on_platform then
+            self.direction = -self.direction
+            move_direction = self.direction
+        end
+    end
+
+    self:check_horizontal_movement(dt, move_direction, self.speed)
+
+    -- Applica gravità e aggiorna animazione
+    Entity.update(self, dt)
+
+    -- Aggiorna stato animazione
+    if not self.on_ground then
+        self.state = self.vy < 0 and "jump" or "fall"
+    elseif math.abs(move_direction) > 0.2 then
+        self.state = "run"
+    else
+        self.state = "idle"
+    end
+    self.current_animation = self.state
+end
+
+function Enemy:draw_animation()
+    local anim = self.animations[self.current_animation]
+    if not anim or not anim.frames[self.current_frame] then return end
+    
+    local sprite = anim.frames[self.current_frame]
+    local spriteWidth = sprite:getWidth()
+    local scaleX = self.facing_right and 1 or -1
+    local offsetX = self.facing_right and 0 or spriteWidth * 0.1
+    
+    love.graphics.draw(
+        sprite, 
+        self.x + offsetX, 
+        self.y + 40, 
+        0, 
+        scaleX * 0.1, 
+        0.1
     )
-    
-    -- Imposta titolo
-    love.window.setTitle("Warrior Platform Game")
-    
-    -- Inizializza input
-    input:init()
-    
-    -- Inizializza mondo
-    world:load()
-    
-    -- Crea player
-    local player = Player:new(100, 100)
-    world:add_entity(player)
-    
-    -- Imposta inizialmente lo stato di gioco
-    change_game_state("playing")
 end
 
--- Update loop
-function love.update(dt)
-    -- Aggiorna input
-    input:update()
-    
-    -- Controlla cambio stato (es. pausa)
-    if input:is_pressed("pause") then
-        if game_state.current == "playing" then
-            change_game_state("paused")
-        elseif game_state.current == "paused" then
-            change_game_state("playing")
-        end
-    end
-    
-    -- Esegui update in base allo stato
-    if game_state.current == "playing" then
-        world:update(dt)
-    elseif game_state.current == "menu" then
-        update_menu(dt)
-    elseif game_state.current == "paused" then
-        update_pause_menu(dt)
-    elseif game_state.current == "game_over" then
-        update_game_over(dt)
-    end
-end
-
--- Drawing loop
-function love.draw()
-    if game_state.current == "playing" or game_state.current == "paused" then
-        world:draw()
-        
-        -- Overlay di pausa
-        if game_state.current == "paused" then
-            draw_pause_menu()
-        end
-    elseif game_state.current == "menu" then
-        draw_menu()
-    elseif game_state.current == "game_over" then
-        draw_game_over()
-    end
-end
-
--- Cambio stato di gioco
-function change_game_state(new_state)
-    -- Esci se lo stato non esiste
-    if not game_state.states[new_state] then return end
-    
-    -- Gestisci uscita dallo stato corrente
-    if game_state.current == "menu" then
-        -- Cleanup menu
-    elseif game_state.current == "playing" then
-        -- Nulla da fare
-    elseif game_state.current == "paused" then
-        -- Nulla da fare
-    elseif game_state.current == "game_over" then
-        -- Cleanup game over
-    end
-    
-    -- Cambia stato
-    game_state.current = new_state
-    
-    -- Gestisci inizializzazione nuovo stato
-    if new_state == "menu" then
-        -- Init menu
-    elseif new_state == "playing" then
-        -- Nulla da fare
-    elseif new_state == "paused" then
-        -- Nulla da fare
-    elseif new_state == "game_over" then
-        -- Init game over
-    end
-end
-
--- Menu principale
-function update_menu(dt)
-    -- Logica menu
-    if input:is_pressed("jump") or input:is_pressed("attack") then
-        change_game_state("playing")
-    end
-end
-
-function draw_menu()
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("WARRIOR PLATFORM GAME", 0, 150, love.graphics.getWidth(), "center")
-    
-    love.graphics.setColor(0.8, 0.8, 0.8)
-    love.graphics.printf("Press SPACE or Z to start", 0, 250, love.graphics.getWidth(), "center")
-end
-
--- Menu pausa
-function update_pause_menu(dt)
-    -- Controlli menu pausa
-end
-
-function draw_pause_menu()
-    -- Overlay semitrasparente
-    love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("PAUSED", 0, 150, love.graphics.getWidth(), "center")
-    
-    love.graphics.setColor(0.8, 0.8, 0.8)
-    love.graphics.printf("Press ESC to resume", 0, 250, love.graphics.getWidth(), "center")
-end
-
--- Game over
-function update_game_over(dt)
-    if input:is_pressed("jump") or input:is_pressed("attack") then
-        -- Restart
-        love.load()
-        change_game_state("playing")
-    end
-end
-
-function draw_game_over()
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-    
-    love.graphics.setColor(1, 0.3, 0.3)
-    love.graphics.printf("GAME OVER", 0, 150, love.graphics.getWidth(), "center")
-    
-    love.graphics.setColor(0.8, 0.8, 0.8)
-    love.graphics.printf("Press SPACE or Z to restart", 0, 250, love.graphics.getWidth(), "center")
-end
-
--- Callbacks LÖVE per l'input
-function love.keypressed(key)
-    input:keypressed(key)
-    
-    -- Uscita di emergenza
-    if key == "escape" and game_state.current == "menu" then
-        love.event.quit()
-    end
-end
-
-function love.keyreleased(key)
-    input:keyreleased(key)
-end
-
-function love.gamepadpressed(joystick, button)
-    input:gamepadpressed(joystick, button)
-end
-
-function love.gamepadreleased(joystick, button)
-    input:gamepadreleased(joystick, button)
-end
-
--- Callback per eventi della finestra
-function love.resize(width, height)
-    -- Aggiorna dimensione viewport
-    world.camera.width = width
-    world.camera.height = height
-end
+return Enemy

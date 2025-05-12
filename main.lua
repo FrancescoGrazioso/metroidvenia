@@ -5,6 +5,7 @@ local config = require("config")
 local input = require("input")
 local world = require("world")
 local Player = require("player")
+local Enemy = require("enemy")
 
 -- Gestori di stato gioco
 local game_state = {
@@ -45,6 +46,12 @@ function love.load()
     -- Crea player
     local player = Player:new(100, 100)
     world:add_entity(player)
+
+    -- Crea nemici
+    for i = 1, 1 do
+        local enemy = Enemy:new(200 + i * 100, 100)
+        world:add_entity(enemy)
+    end
     
     -- Imposta inizialmente lo stato di gioco
     change_game_state("playing")
