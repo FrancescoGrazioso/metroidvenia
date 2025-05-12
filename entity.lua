@@ -115,7 +115,10 @@ function Entity:check_horizontal_movement(dt, move_direction, speed)
     
     if not collided then
         self.x = new_x
-        self.facing_right = move_direction > 0
+        -- Aggiorniamo la direzione solo se c'è un movimento significativo
+        if math.abs(move_direction) > 0.2 then
+            self.facing_right = move_direction > 0
+        end
         return true
     end
     
