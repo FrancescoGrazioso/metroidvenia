@@ -16,8 +16,8 @@ local config = {
     ENTITY_SCALE = 1.6,
     
     -- Dash
-    DASH_DURATION = 0.18,
-    DASH_SPEED = 800,
+    DASH_DURATION = 0.28,
+    DASH_SPEED = 600,
     DASH_COOLDOWN = 0.4,
     
     -- Debug
