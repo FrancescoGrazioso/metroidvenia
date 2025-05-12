@@ -20,11 +20,9 @@ local game_state = {
 -- Inizializzazione
 function love.load()
     -- Imposta dimensioni finestra
-    local screen_width = config.SCREEN_WIDTH or 800
-    local screen_height = config.SCREEN_HEIGHT or 600
     love.window.setMode(
-        screen_width, 
-        screen_height, 
+        config.SCREEN_WIDTH, 
+        config.SCREEN_HEIGHT, 
         { 
             resizable = true,
             vsync = true,
@@ -181,48 +179,24 @@ end
 
 -- Callbacks LÖVE per l'input
 function love.keypressed(key)
--- Passa l'input al modulo input
     input:keypressed(key)
     
-    -- Altri gestori di input
-    if game_state.current == "playing" then
-        if world.player then
-            world.player:keypressed(key)
-        end
+    -- Uscita di emergenza
+    if key == "escape" and game_state.current == "menu" then
+        love.event.quit()
     end
 end
 
 function love.keyreleased(key)
     input:keyreleased(key)
-    
-    -- Passa l'input al player
-    if game_state.current == "playing" then
-        if world.player then
-            world.player:keyreleased(key)
-        end
-    end
 end
 
 function love.gamepadpressed(joystick, button)
     input:gamepadpressed(joystick, button)
-    
-    -- Passa l'input al player
-    if game_state.current == "playing" then
-        if world.player then
-            world.player:gamepadpressed(joystick, button)
-        end
-    end
 end
 
 function love.gamepadreleased(joystick, button)
     input:gamepadreleased(joystick, button)
-    
-    -- Passa l'input al player
-    if game_state.current == "playing" then
-        if world.player then
-            world.player:gamepadreleased(joystick, button)
-        end
-    end
 end
 
 -- Callback per eventi della finestra
