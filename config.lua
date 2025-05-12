@@ -11,8 +11,8 @@ local config = {
     MAX_JUMPS = 2,
     
     -- Animazioni
-    FRAME_DURATION = 0.15,
-    ATTACK_SPEED_MULTIPLIER = 0.47,
+    FRAME_DURATION = 0.2,
+    ATTACK_SPEED_MULTIPLIER = 0.3,
     ENTITY_SCALE = 1.6,
     
     -- Dash
