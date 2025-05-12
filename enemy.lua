@@ -18,7 +18,7 @@ function Enemy:new(x, y)
     instance.previous_state = nil
 
     -- Movimento base (velocità aumentata del 25%)
-    instance.speed = config.PLAYER_SPEED
+    instance.speed = config.PLAYER_SPEED * 0.7
     instance.direction = 1 -- 1 = destra, -1 = sinistra
 
     -- Carica le stesse animazioni del player
